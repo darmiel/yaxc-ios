@@ -11,12 +11,17 @@ class ViewController: UIViewController {
 
     @IBOutlet weak var anywherePathTxt: UITextField!
     @IBOutlet weak var statusLbl: UILabel!
+    @IBOutlet weak var previousTable: UITableView!
+    
+    var history: [String] = []
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view.
+        
+        self.previousTable.delegate = self
+        self.previousTable.dataSource = self
     }
-
+    
     func getUrl() -> URL? {
         // get anywhere path
         let anywhere = self.anywherePathTxt.text
@@ -34,13 +39,32 @@ class ViewController: UIViewController {
         }
     }
     
+    func doAppendHistory(_ cb: String) -> Bool {
+        if self.history.count == 0 {
+            return true
+        }
+        let last = self.history[self.history.count - 1]
+        return last != cb
+    }
+    
+    func appendHistory(_ cb: String) {
+        if !(doAppendHistory(cb)) {
+            return
+        }
+        // append
+        self.history.append(cb)
+        // reload table
+        DispatchQueue.main.async {
+            self.previousTable.reloadData()
+        }
+    }
+    
     @IBAction func loadClipboardBtn(_ sender: Any) {
         // build url
         let url = getUrl()
         if url == nil {
             return
         }
-        print("lc:", url!)
         
         // make network request
         let session = URLSession.shared
@@ -59,6 +83,9 @@ class ViewController: UIViewController {
             // read result
             let str = String(decoding: data!, as: UTF8.self)
             self.msg(str)
+            
+            // history
+            self.appendHistory(str)
             
             // write to clipboard
             UIPasteboard.general.string = str
@@ -107,4 +134,26 @@ class ViewController: UIViewController {
         }.resume()
     }
     
+}
+
+extension ViewController: UITableViewDelegate {
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let data = self.history[indexPath.row]
+        print("you tapped me:", data)
+        
+        // write to clipboard
+        UIPasteboard.general.string = data
+        self.msg("Wrote clipboard.")
+    }
+}
+
+extension ViewController: UITableViewDataSource {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return self.history.count
+    }
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = self.previousTable.dequeueReusableCell(withIdentifier: "cell", for:indexPath)
+        cell.textLabel?.text = self.history[indexPath.row]
+        return cell
+    }
 }
