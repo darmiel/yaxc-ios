@@ -76,13 +76,13 @@ class ViewController: UIViewController {
             
             guard let httpResponse = response as? HTTPURLResponse,
                   (200...299).contains(httpResponse.statusCode) else {
-                self.msg("status code not 2xx")
+                self.msg("no clipboard on server.")
                 return
             }
             
             // read result
             let str = String(decoding: data!, as: UTF8.self)
-            self.msg(str)
+            self.msg("received: " + str)
             
             // history
             self.appendHistory(str)
@@ -130,7 +130,7 @@ class ViewController: UIViewController {
             
             // write result
             let res = String(decoding: data!, as: UTF8.self)
-            self.msg(res)
+            self.msg("sent: " + res)
         }.resume()
     }
     
