@@ -12,14 +12,54 @@ class ViewController: UIViewController {
     @IBOutlet weak var anywherePathTxt: UITextField!
     @IBOutlet weak var statusLbl: UILabel!
     @IBOutlet weak var previousTable: UITableView!
+    @IBOutlet weak var autoCheckSwitch: UISwitch!
     
     var history: [String] = []
+    var autoTimer: Timer?
+    
+    @IBAction func switchToggled(_ sender: Any) {
+        if self.autoCheckSwitch.isOn {
+            self.startAutoTimer()
+        } else {
+            self.stopAutoTimer()
+        }
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
         self.previousTable.delegate = self
         self.previousTable.dataSource = self
+        
+        // start timer
+        if self.autoCheckSwitch.isOn {
+          print("Starting timer ...")
+            self.startAutoTimer()
+        }
+    }
+    @objc func fire() {
+        self.readServer(replaceClipboard: false)
+    }
+    
+    func startAutoTimer() {
+        self.msg("Starting Auto Timer Task.")
+        stopAutoTimer()
+        self.autoTimer = Timer.scheduledTimer(
+            timeInterval: 1.0,
+            target: self,
+            selector: #selector(fire),
+            userInfo: nil,
+            repeats: true)
+    }
+    
+    func stopAutoTimer() {
+        self.msg("Stopping Auto Timer Task.")
+        if self.autoTimer == nil {
+            return
+        }
+        print("Stopping timer ...")
+        self.autoTimer?.invalidate()
+        self.autoTimer = nil
     }
     
     func getUrl() -> URL? {
@@ -59,12 +99,12 @@ class ViewController: UIViewController {
         }
     }
     
-    @IBAction func loadClipboardBtn(_ sender: Any) {
-        // build url
+    func readServer(replaceClipboard: Bool) {
         let url = getUrl()
         if url == nil {
             return
         }
+        print("requesting", url!, "to check clipboard")
         
         // make network request
         let session = URLSession.shared
@@ -82,15 +122,20 @@ class ViewController: UIViewController {
             
             // read result
             let str = String(decoding: data!, as: UTF8.self)
-            self.msg("received: " + str)
             
             // history
             self.appendHistory(str)
             
             // write to clipboard
-            UIPasteboard.general.string = str
+            if replaceClipboard {
+                self.msg("received: " + str)
+                UIPasteboard.general.string = str
+            }
         }).resume()
-        
+    }
+    
+    @IBAction func loadClipboardBtn(_ sender: Any) {
+       readServer(replaceClipboard: true)
     }
     
     @IBAction func writeClipboardBtn(_ sender: Any) {
